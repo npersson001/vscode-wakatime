@@ -72,6 +72,8 @@ export class WakaTime {
   private lastHeartbeat: number = 0;
   private dependencies: Dependencies;
   private options: Options = new Options();
+  private editLogPath = __dirname + path.sep + 'editLog';
+  private editLogFile;
 
   constructor() {}
 
@@ -92,6 +94,9 @@ export class WakaTime {
         else this.statusBar.show();
       });
     });
+
+    // ******* added by nils *******
+    this.editLogFile = fs.createWriteStream(this.editLogPath, {flags:'a'});
 
     this.setupEventListeners();
   }
@@ -242,6 +247,7 @@ export class WakaTime {
 
   private onChange(): void {
     this.onEvent(false);
+    this.logEdits();
   }
 
   private onSave(): void {
@@ -260,6 +266,36 @@ export class WakaTime {
             this.sendHeartbeat(file, isWrite);
             this.lastFile = file;
             this.lastHeartbeat = time;
+          }
+        }
+      }
+    }
+  }
+
+  private logEdits(): void {
+    let editor = vscode.window.activeTextEditor;
+    if(editor){
+      let doc = editor.document;
+      if(doc){
+        let text = editor.document.getText();
+        let selection = editor.selection;
+        if(selection){
+          let start = selection.start;
+          if(start){
+            let pos = start.line + ',' + start.character + '\n';
+            let uri = doc.uri;
+            if(uri){
+              let path = uri.path;
+              // let json = {
+              //   'path' : path,
+              //   'time' : Date.now(),
+              //   'position' : pos,
+              //   'code' : text
+              // };
+              // this.editLogFile.write(JSON.stringify(json));
+              this.editLogFile.write('!@#$!@#$!@#$\r\n' + path + '\r\n' + Date.now() + '\r\n' 
+                  + pos + '\r\n' + text + '$#@!$#@!$#@!\r\n');
+            }
           }
         }
       }
