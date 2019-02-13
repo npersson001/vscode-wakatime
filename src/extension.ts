@@ -73,6 +73,8 @@ export class WakaTime {
   private dependencies: Dependencies;
   private options: Options = new Options();
   private editLogPath = __dirname + path.sep + 'editLog';
+
+  // ******* added by nils *******
   private editLogFile;
 
   constructor() {}
@@ -272,6 +274,8 @@ export class WakaTime {
     }
   }
 
+  // ******* added by nils *******
+  // method to do the actual logging, called every change to document
   private logEdits(): void {
     let editor = vscode.window.activeTextEditor;
     if(editor){
