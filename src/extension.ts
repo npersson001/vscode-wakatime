@@ -101,6 +101,7 @@ export class WakaTime {
     this.editLogFile = fs.createWriteStream(this.editLogPath, {flags:'a'});
 
     this.setupEventListeners();
+    this.setupOverridenCommands();
   }
 
   public promptForApiKey(): void {
@@ -247,6 +248,19 @@ export class WakaTime {
     this.disposable = vscode.Disposable.from(...subscriptions);
   }
 
+  //****** added by Ram ******
+  private setupOverridenCommands(): void {
+    let subscriptions: vscode.Disposable[] = [];
+    var pasteDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardPasteAction', () => {
+      this.logPastes();
+      vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(()=>{
+        console.log("pasted");
+      });
+    })
+    subscriptions.push(pasteDisposable);
+    this.disposable = vscode.Disposable.from(...subscriptions);
+  }
+
   private onChange(): void {
     this.onEvent(false);
     this.logEdits();
@@ -277,33 +291,39 @@ export class WakaTime {
   // ******* added by nils *******
   // method to do the actual logging, called every change to document
   private logEdits(): void {
-    let editor = vscode.window.activeTextEditor;
-    if(editor){
-      let doc = editor.document;
-      if(doc){
-        let text = editor.document.getText();
-        let selection = editor.selection;
-        if(selection){
-          let start = selection.start;
-          if(start){
-            let pos = start.line + ',' + start.character + '\n';
-            let uri = doc.uri;
-            if(uri){
-              let path = uri.path;
-              // let json = {
-              //   'path' : path,
-              //   'time' : Date.now(),
-              //   'position' : pos,
-              //   'code' : text
-              // };
-              // this.editLogFile.write(JSON.stringify(json));
-              this.editLogFile.write('!@#$!@#$!@#$\r\n' + path + '\r\n' + Date.now() + '\r\n' 
-                  + pos + '\r\n' + text + '$#@!$#@!$#@!\r\n');
-            }
-          }
-        }
-      }
-    }
+    // let editor = vscode.window.activeTextEditor;
+    // if(editor){
+    //   let doc = editor.document;
+    //   if(doc){
+    //     let text = editor.document.getText();
+    //     let selection = editor.selection;
+    //     if(selection){
+    //       let start = selection.start;
+    //       if(start){
+    //         let pos = start.line + ',' + start.character + '\n';
+    //         let uri = doc.uri;
+    //         if(uri){
+    //           let path = uri.path;
+    //           // let json = {
+    //           //   'path' : path,
+    //           //   'time' : Date.now(),
+    //           //   'position' : pos,
+    //           //   'code' : text
+    //           // };
+    //           // this.editLogFile.write(JSON.stringify(json));
+    //           this.editLogFile.write('!@#$!@#$!@#$\r\n' + path + '\r\n' + Date.now() + '\r\n' 
+    //               + pos + '\r\n' + text + '$#@!$#@!$#@!\r\n');
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+  }
+
+  //****** added by Ram ******
+  //method to log paste changes
+  private logPastes(): void {
+    this.editLogFile.write("Something was pasted");
   }
 
   private sendHeartbeat(file: string, isWrite): void {
