@@ -253,10 +253,24 @@ export class WakaTime {
     let subscriptions: vscode.Disposable[] = [];
     var pasteDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardPasteAction', () => {
       this.logPastes();
+      pasteDisposable.dispose();
       vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(()=>{
         console.log("pasted");
+        pasteDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardPasteAction', pasteOverride)
+        subscriptions.push(pasteDisposable);
       });
     })
+
+    var pasteOverride = ()=> {
+      this.logPastes();
+      pasteDisposable.dispose();
+      vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(()=>{
+        console.log("pasted");
+        pasteDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardPasteAction', pasteOverride)
+        subscriptions.push(pasteDisposable);
+      });
+    }
+
     subscriptions.push(pasteDisposable);
     this.disposable = vscode.Disposable.from(...subscriptions);
   }
@@ -323,7 +337,7 @@ export class WakaTime {
   //****** added by Ram ******
   //method to log paste changes
   private logPastes(): void {
-    this.editLogFile.write("Something was pasted");
+    this.editLogFile.write("Something was pasted \n");
   }
 
   private sendHeartbeat(file: string, isWrite): void {
