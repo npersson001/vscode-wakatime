@@ -19,31 +19,31 @@ export function activate(ctx: vscode.ExtensionContext) {
   let wakatime = new WakaTime();
 
   ctx.subscriptions.push(
-    vscode.commands.registerCommand('wakatime.apikey', function(args) {
+    vscode.commands.registerCommand('wakatime.apikey', function (args) {
       wakatime.promptForApiKey();
     }),
   );
 
   ctx.subscriptions.push(
-    vscode.commands.registerCommand('wakatime.proxy', function(args) {
+    vscode.commands.registerCommand('wakatime.proxy', function (args) {
       wakatime.promptForProxy();
     }),
   );
 
   ctx.subscriptions.push(
-    vscode.commands.registerCommand('wakatime.debug', function(args) {
+    vscode.commands.registerCommand('wakatime.debug', function (args) {
       wakatime.promptForDebug();
     }),
   );
 
   ctx.subscriptions.push(
-    vscode.commands.registerCommand('wakatime.status_bar_icon', function(args) {
+    vscode.commands.registerCommand('wakatime.status_bar_icon', function (args) {
       wakatime.promptStatusBarIcon();
     }),
   );
 
   ctx.subscriptions.push(
-    vscode.commands.registerCommand('wakatime.dashboard', function(args) {
+    vscode.commands.registerCommand('wakatime.dashboard', function (args) {
       wakatime.openDashboardWebsite();
     }),
   );
@@ -51,7 +51,7 @@ export function activate(ctx: vscode.ExtensionContext) {
   // dispose WakaTime instance when this extension is deactivated
   ctx.subscriptions.push(wakatime);
 
-  options.getSetting('settings', 'debug', function(error, debug) {
+  options.getSetting('settings', 'debug', function (error, debug) {
     if (debug && debug.trim() === 'true') logger.setLevel('debug');
     wakatime.initialize();
   });
@@ -77,7 +77,7 @@ export class WakaTime {
   // ******* added by nils *******
   private editLogFile;
 
-  constructor() {}
+  constructor() { }
 
   public initialize(): void {
     logger.debug('Initializing WakaTime v' + this.extension.version);
@@ -98,9 +98,11 @@ export class WakaTime {
     });
 
     // ******* added by nils *******
-    this.editLogFile = fs.createWriteStream(this.editLogPath, {flags:'a'});
+    this.editLogFile = fs.createWriteStream(this.editLogPath, { flags: 'a' });
 
     this.setupEventListeners();
+
+    //****** added by Ram ******/
     this.setupOverridenCommands();
   }
 
@@ -251,27 +253,146 @@ export class WakaTime {
   //****** added by Ram ******
   private setupOverridenCommands(): void {
     let subscriptions: vscode.Disposable[] = [];
+
+    //setting up paste command override
+
     var pasteDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardPasteAction', () => {
-      this.logPastes();
+      vscode.env.clipboard.readText().then((text) => {
+        this.logPaste(text);
+      })
       pasteDisposable.dispose();
-      vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(()=>{
-        console.log("pasted");
+      vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(() => {
         pasteDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardPasteAction', pasteOverride)
         subscriptions.push(pasteDisposable);
       });
     })
 
-    var pasteOverride = ()=> {
-      this.logPastes();
+    var pasteOverride = () => {
+      vscode.env.clipboard.readText().then((text) => {
+        this.logPaste(text);
+      })
       pasteDisposable.dispose();
-      vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(()=>{
-        console.log("pasted");
+      vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(() => {
         pasteDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardPasteAction', pasteOverride)
         subscriptions.push(pasteDisposable);
       });
     }
 
+    //setting up copy override
+
+    var copyDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardCopyAction', () => {
+      vscode.env.clipboard.readText().then((text) => {
+        this.logCopy(text);
+      })
+      copyDisposable.dispose();
+      vscode.commands.executeCommand("editor.action.clipboardCopyAction").then(() => {
+        copyDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardCopyAction', copyOverride)
+        subscriptions.push(copyDisposable);
+      });
+    })
+
+    var copyOverride = () => {
+      vscode.env.clipboard.readText().then((text) => {
+        this.logCopy(text);
+      })
+      copyDisposable.dispose();
+      vscode.commands.executeCommand("editor.action.clipboardCopyAction").then(() => {
+        copyDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardCopyAction', copyOverride)
+        subscriptions.push(copyDisposable);
+      });
+    }
+
+    //setting up input override
+
+    var typeDisposable = vscode.commands.registerCommand('type', (args) => {
+      this.logTyped(args);
+      vscode.commands.executeCommand('default:' + 'type', args);
+    })
+
+    //setting up delete override
+
+    var deleteDisposable = vscode.commands.registerCommand('deleteRight', () => {
+      this.logDelete();
+      deleteDisposable.dispose();
+      vscode.commands.executeCommand("deleteRight").then(() => {
+        deleteDisposable = vscode.commands.registerCommand('deleteRight', deleteOverride)
+        subscriptions.push(deleteDisposable);
+      });
+    })
+
+    var deleteOverride = () => {
+      this.logDelete();
+      deleteDisposable.dispose();
+      vscode.commands.executeCommand("deleteRight").then(() => {
+        deleteDisposable = vscode.commands.registerCommand('deleteRight', deleteOverride)
+        subscriptions.push(deleteDisposable);
+      });
+    }
+
+    //setting up backspace override
+
+    var backspaceDisposable = vscode.commands.registerCommand('deleteLeft', () => {
+      this.logBackspace();
+      backspaceDisposable.dispose();
+      vscode.commands.executeCommand("deleteLeft").then(() => {
+        backspaceDisposable = vscode.commands.registerCommand('deleteLeft', backspaceOverride)
+        subscriptions.push(backspaceDisposable);
+      });
+    })
+
+    var backspaceOverride = () => {
+      this.logBackspace();
+      backspaceDisposable.dispose();
+      vscode.commands.executeCommand("deleteLeft").then(() => {
+        backspaceDisposable = vscode.commands.registerCommand('deleteLeft', backspaceOverride)
+        subscriptions.push(backspaceDisposable);
+      });
+    }
+
+    //setting up refactor override
+
+    var refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', () => {
+      this.logRefactor();
+      refactorDisposable.dispose();
+      vscode.commands.executeCommand("editor.action.refactor").then(() => {
+        refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', refactorOverride)
+        subscriptions.push(refactorDisposable);
+      });
+    })
+
+    var refactorOverride = () => {
+      this.logRefactor();
+      refactorDisposable.dispose();
+      vscode.commands.executeCommand("editor.action.refactor").then(() => {
+        refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', refactorOverride)
+        subscriptions.push(refactorDisposable);
+      });
+    }
+
+
+    //setting up undo override
+
+    var undoDisposable = vscode.commands.registerCommand('undo', () => {
+      this.logUndo();
+      vscode.commands.executeCommand('default:' + 'undo');
+    })
+
+    //setting up redo override
+
+    var redoDisposable = vscode.commands.registerCommand('redo', () => {
+      this.logRedo();
+      vscode.commands.executeCommand('default:' + 'redo');
+    })
+
     subscriptions.push(pasteDisposable);
+    subscriptions.push(copyDisposable);
+    subscriptions.push(typeDisposable);
+    subscriptions.push(deleteDisposable);
+    subscriptions.push(backspaceDisposable);
+    subscriptions.push(refactorDisposable);
+    subscriptions.push(undoDisposable);
+    subscriptions.push(redoDisposable);
+
     this.disposable = vscode.Disposable.from(...subscriptions);
   }
 
@@ -336,8 +457,38 @@ export class WakaTime {
 
   //****** added by Ram ******
   //method to log paste changes
-  private logPastes(): void {
-    this.editLogFile.write("Something was pasted \n");
+  private logPaste(text): void {
+    this.editLogFile.write("Something was pasted" + text + "\n");
+  }
+
+  private logCopy(text): void {
+    this.editLogFile.write("Something was copied" + text + "\n");
+  }
+
+  private logRefactor(): void {
+    this.editLogFile.write("Something was refactored \n");
+  }
+
+  //method to log stuff when typed
+  private logTyped(args): void {
+    // console.log(args);
+    this.editLogFile.write(args.text);
+  }
+
+  private logDelete(): void {
+    console.log('delete');
+  }
+
+  private logBackspace(): void {
+    console.log('backspace');
+  }
+
+  private logUndo(): void {
+    console.log('undo');
+  }
+
+  private logRedo(): void {
+    console.log('redo');
   }
 
   private sendHeartbeat(file: string, isWrite): void {
@@ -465,7 +616,7 @@ export class WakaTime {
     if (vscode.workspace && workspaceFolder) {
       try {
         return workspaceFolder.name;
-      } catch (e) {}
+      } catch (e) { }
     }
     return null;
   }
@@ -631,10 +782,10 @@ class Dependencies {
   private async getLatestCoreVersion(callback: (string) => void): Promise<void> {
     let url = 'https://raw.githubusercontent.com/wakatime/wakatime/master/wakatime/__about__.py';
     const request = await import('request');
-    this.options.getSetting('settings', 'proxy', function(err, proxy) {
+    this.options.getSetting('settings', 'proxy', function (err, proxy) {
       let options = { url: url };
       if (proxy && proxy.trim()) options['proxy'] = proxy.trim();
-      request.get(options, function(error, response, body) {
+      request.get(options, function (error, response, body) {
         let version = null;
         if (!error && response.statusCode == 200) {
           let lines = body.split('\n');
@@ -691,14 +842,14 @@ class Dependencies {
 
   private async downloadFile(url: string, outputFile: string, callback: () => void): Promise<void> {
     const request = await import('request');
-    this.options.getSetting('settings', 'proxy', function(err, proxy) {
+    this.options.getSetting('settings', 'proxy', function (err, proxy) {
       let options = { url: url };
       if (proxy && proxy.trim()) options['proxy'] = proxy.trim();
       let r = request.get(options);
       let out = fs.createWriteStream(outputFile);
       r.pipe(out);
-      return r.on('end', function() {
-        return out.on('finish', function() {
+      return r.on('end', function () {
+        return out.on('finish', function () {
           if (callback != null) {
             return callback();
           }
@@ -865,7 +1016,7 @@ class Options {
         contents.push(key + ' = ' + val);
       }
 
-      fs.writeFile(this.getConfigFile(), contents.join('\n'), function(err2) {
+      fs.writeFile(this.getConfigFile(), contents.join('\n'), function (err2) {
         if (err) {
           if (callback) callback(new Error('could not write to ' + this.getConfigFile()));
         } else {
