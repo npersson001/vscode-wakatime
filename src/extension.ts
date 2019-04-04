@@ -251,6 +251,8 @@ export class WakaTime {
   }
 
   //****** added by Ram ******
+  //method to set-up the overriding of commands
+
   private setupOverridenCommands(): void {
     let subscriptions: vscode.Disposable[] = [];
 
@@ -258,7 +260,7 @@ export class WakaTime {
 
     var pasteDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardPasteAction', () => {
       vscode.env.clipboard.readText().then((text) => {
-        this.logPaste(text);
+        this.logEdits('paste', text);
       })
       pasteDisposable.dispose();
       vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(() => {
@@ -269,7 +271,7 @@ export class WakaTime {
 
     var pasteOverride = () => {
       vscode.env.clipboard.readText().then((text) => {
-        this.logPaste(text);
+        this.logEdits('paste', text);
       })
       pasteDisposable.dispose();
       vscode.commands.executeCommand("editor.action.clipboardPasteAction").then(() => {
@@ -282,7 +284,7 @@ export class WakaTime {
 
     var copyDisposable = vscode.commands.registerTextEditorCommand('editor.action.clipboardCopyAction', () => {
       vscode.env.clipboard.readText().then((text) => {
-        this.logCopy(text);
+        this.logEdits('copy', text);
       })
       copyDisposable.dispose();
       vscode.commands.executeCommand("editor.action.clipboardCopyAction").then(() => {
@@ -293,7 +295,7 @@ export class WakaTime {
 
     var copyOverride = () => {
       vscode.env.clipboard.readText().then((text) => {
-        this.logCopy(text);
+        this.logEdits('copy', text);
       })
       copyDisposable.dispose();
       vscode.commands.executeCommand("editor.action.clipboardCopyAction").then(() => {
@@ -305,14 +307,20 @@ export class WakaTime {
     //setting up input override
 
     var typeDisposable = vscode.commands.registerCommand('type', (args) => {
-      this.logTyped(args);
+      this.logEdits('input', args.text);
       vscode.commands.executeCommand('default:' + 'type', args);
     })
 
     //setting up delete override
 
     var deleteDisposable = vscode.commands.registerCommand('deleteRight', () => {
-      this.logDelete();
+      let editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return
+      }
+      let selection = editor.selection;
+      let text = editor.document.getText(selection);
+      this.logEdits('delete', text);
       deleteDisposable.dispose();
       vscode.commands.executeCommand("deleteRight").then(() => {
         deleteDisposable = vscode.commands.registerCommand('deleteRight', deleteOverride)
@@ -321,7 +329,13 @@ export class WakaTime {
     })
 
     var deleteOverride = () => {
-      this.logDelete();
+      let editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return
+      }
+      let selection = editor.selection;
+      let text = editor.document.getText(selection);
+      this.logEdits('delete', text);
       deleteDisposable.dispose();
       vscode.commands.executeCommand("deleteRight").then(() => {
         deleteDisposable = vscode.commands.registerCommand('deleteRight', deleteOverride)
@@ -332,7 +346,13 @@ export class WakaTime {
     //setting up backspace override
 
     var backspaceDisposable = vscode.commands.registerCommand('deleteLeft', () => {
-      this.logBackspace();
+      let editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return
+      }
+      let selection = editor.selection;
+      let text = editor.document.getText(selection);
+      this.logEdits('backspace', text);
       backspaceDisposable.dispose();
       vscode.commands.executeCommand("deleteLeft").then(() => {
         backspaceDisposable = vscode.commands.registerCommand('deleteLeft', backspaceOverride)
@@ -341,7 +361,13 @@ export class WakaTime {
     })
 
     var backspaceOverride = () => {
-      this.logBackspace();
+      let editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return
+      }
+      let selection = editor.selection;
+      let text = editor.document.getText(selection);
+      this.logEdits('backspace', text);
       backspaceDisposable.dispose();
       vscode.commands.executeCommand("deleteLeft").then(() => {
         backspaceDisposable = vscode.commands.registerCommand('deleteLeft', backspaceOverride)
@@ -352,7 +378,7 @@ export class WakaTime {
     //setting up refactor override
 
     var refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', () => {
-      this.logRefactor();
+      this.logEdits('refactor', null);
       refactorDisposable.dispose();
       vscode.commands.executeCommand("editor.action.refactor").then(() => {
         refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', refactorOverride)
@@ -361,7 +387,7 @@ export class WakaTime {
     })
 
     var refactorOverride = () => {
-      this.logRefactor();
+      this.logEdits('refactor', null);
       refactorDisposable.dispose();
       vscode.commands.executeCommand("editor.action.refactor").then(() => {
         refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', refactorOverride)
@@ -373,14 +399,14 @@ export class WakaTime {
     //setting up undo override
 
     var undoDisposable = vscode.commands.registerCommand('undo', () => {
-      this.logUndo();
+      this.logEdits('undo', null);
       vscode.commands.executeCommand('default:' + 'undo');
     })
 
     //setting up redo override
 
     var redoDisposable = vscode.commands.registerCommand('redo', () => {
-      this.logRedo();
+      this.logEdits('redo', null);
       vscode.commands.executeCommand('default:' + 'redo');
     })
 
@@ -398,7 +424,7 @@ export class WakaTime {
 
   private onChange(): void {
     this.onEvent(false);
-    this.logEdits();
+    //this.logEdits();
   }
 
   private onSave(): void {
@@ -425,71 +451,52 @@ export class WakaTime {
 
   // ******* added by nils *******
   // method to do the actual logging, called every change to document
-  private logEdits(): void {
-    // let editor = vscode.window.activeTextEditor;
-    // if(editor){
-    //   let doc = editor.document;
-    //   if(doc){
-    //     let text = editor.document.getText();
-    //     let selection = editor.selection;
-    //     if(selection){
-    //       let start = selection.start;
-    //       if(start){
-    //         let pos = start.line + ',' + start.character + '\n';
-    //         let uri = doc.uri;
-    //         if(uri){
-    //           let path = uri.path;
-    //           // let json = {
-    //           //   'path' : path,
-    //           //   'time' : Date.now(),
-    //           //   'position' : pos,
-    //           //   'code' : text
-    //           // };
-    //           // this.editLogFile.write(JSON.stringify(json));
-    //           this.editLogFile.write('!@#$!@#$!@#$\r\n' + path + '\r\n' + Date.now() + '\r\n' 
-    //               + pos + '\r\n' + text + '$#@!$#@!$#@!\r\n');
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
+  //Ram: modified this method to take two inputs for the command type and any relevant arguments/input/selections, added some other stuff at the bottom
+  private logEdits(type: String, args: any): void {
+    let editor = vscode.window.activeTextEditor;
+    if (editor) {
+      let doc = editor.document;
+      if (doc) {
+        let text = editor.document.getText();
+        let selection = editor.selection;
+        if (selection) {
+          let start = selection.start;
+          if (start) {
+            let pos = start.line + ',' + start.character;
+            let uri = doc.uri;
+            if (uri) {
+              let path = uri.path;
+              let json = {
+                'command': type,
+                'path': path,
+                'time': new Date(Date.now()).toLocaleString(),
+                'position': pos,
+                'arguments': args
+              }
+
+              // For JSON output:
+              // this.editLogFile.write(JSON.stringify(json));
+
+              // For human-readable output: 
+              this.editLogFile.write(
+                '###########\r\n'
+              + 'path: ' + json.path + '\r\n'
+              + 'time: ' + json.time + '\r\n'
+              + 'position: ' + json.position + '\r\n'
+              + 'command: ' + json.command + '\r\n'
+              + 'arguments: ' + json.arguments + '\r\n'
+              + '###########\r\n\n'
+              );
+
+              // this.editLogFile.write('!@#$!@#$!@#$\r\n' + path + '\r\n' + Date.now() + '\r\n'
+              //   + pos + '\r\n' + text + '$#@!$#@!$#@!\r\n');
+            }
+          }
+        }
+      }
+    }
   }
 
-  //****** added by Ram ******
-  //method to log paste changes
-  private logPaste(text): void {
-    this.editLogFile.write("Something was pasted" + text + "\n");
-  }
-
-  private logCopy(text): void {
-    this.editLogFile.write("Something was copied" + text + "\n");
-  }
-
-  private logRefactor(): void {
-    this.editLogFile.write("Something was refactored \n");
-  }
-
-  //method to log stuff when typed
-  private logTyped(args): void {
-    // console.log(args);
-    this.editLogFile.write(args.text);
-  }
-
-  private logDelete(): void {
-    console.log('delete');
-  }
-
-  private logBackspace(): void {
-    console.log('backspace');
-  }
-
-  private logUndo(): void {
-    console.log('undo');
-  }
-
-  private logRedo(): void {
-    console.log('redo');
-  }
 
   private sendHeartbeat(file: string, isWrite): void {
     this.hasApiKey(hasApiKey => {
