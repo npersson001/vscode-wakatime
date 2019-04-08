@@ -102,8 +102,51 @@ export class WakaTime {
 
     this.setupEventListeners();
 
-    //****** added by Ram ******/
+    // ******* added by Ram *******
     this.setupOverridenCommands();
+
+    //setting up rename override
+
+    let fsWatchCounter = 0;
+    let json = {
+      'command': 'renameFile',
+      'path': '',
+      'time': new Date(Date.now()).toLocaleString(),
+      'position': null,
+      'arguments': []
+    }
+
+    fs.watch(vscode.workspace.workspaceFolders[0].uri.toString().substring(7, vscode.workspace.workspaceFolders[0].uri.toString().length), { recursive: true }, (eventType, fileName) => {
+      if (eventType === 'rename') {
+        let path = vscode.workspace.workspaceFolders[0].uri.toString().substring(7, vscode.workspace.workspaceFolders[0].uri.toString().length);
+
+        if (fsWatchCounter === 0) {
+          json.path = path;
+          json.arguments.push(fileName);
+          fsWatchCounter++;
+        } else {
+          json.arguments.push(fileName);
+          fsWatchCounter--;
+          // For JSON output:
+          // this.editLogFile.write(JSON.stringify(json));
+
+          // For human-readable output: 
+          this.editLogFile.write(
+            '###########\r\n'
+            + 'path: ' + json.path + '\r\n'
+            + 'time: ' + json.time + '\r\n'
+            + 'position: ' + json.position + '\r\n'
+            + 'command: ' + json.command + '\r\n'
+            + 'arguments: ' + json.arguments + '\r\n'
+            + '###########\r\n\n'
+          );
+
+          json.path = '';
+          json.arguments = [];
+
+        }
+      }
+    });
   }
 
   public promptForApiKey(): void {
@@ -375,26 +418,27 @@ export class WakaTime {
       });
     }
 
-    //setting up refactor override
+    //setting up rename override
 
-    var refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', () => {
-      this.logEdits('refactor', null);
-      refactorDisposable.dispose();
-      vscode.commands.executeCommand("editor.action.refactor").then(() => {
-        refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', refactorOverride)
-        subscriptions.push(refactorDisposable);
-      });
-    })
+    // var refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.rename', (args) => {
+    //   console.log(args);
+    //   this.logEdits('refactor', null);
+    //   refactorDisposable.dispose();
+    //   vscode.commands.executeCommand("editor.action.rename").then((args) => {
+    //     refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.rename', refactorOverride(args))
+    //     subscriptions.push(refactorDisposable);
+    //   });
+    // })
 
-    var refactorOverride = () => {
-      this.logEdits('refactor', null);
-      refactorDisposable.dispose();
-      vscode.commands.executeCommand("editor.action.refactor").then(() => {
-        refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.refactor', refactorOverride)
-        subscriptions.push(refactorDisposable);
-      });
-    }
-
+    // var refactorOverride = (args) => {
+    //   console.log(args);
+    //   this.logEdits('refactor', null);
+    //   refactorDisposable.dispose();
+    //   vscode.commands.executeCommand("editor.action.rename").then((args) => {
+    //     refactorDisposable = vscode.commands.registerTextEditorCommand('editor.action.rename', refactorOverride(args))
+    //     subscriptions.push(refactorDisposable);
+    //   });
+    // }
 
     //setting up undo override
 
@@ -415,10 +459,9 @@ export class WakaTime {
     subscriptions.push(typeDisposable);
     subscriptions.push(deleteDisposable);
     subscriptions.push(backspaceDisposable);
-    subscriptions.push(refactorDisposable);
+    // subscriptions.push(refactorDisposable);
     subscriptions.push(undoDisposable);
     subscriptions.push(redoDisposable);
-
     this.disposable = vscode.Disposable.from(...subscriptions);
   }
 
@@ -480,12 +523,12 @@ export class WakaTime {
               // For human-readable output: 
               this.editLogFile.write(
                 '###########\r\n'
-              + 'path: ' + json.path + '\r\n'
-              + 'time: ' + json.time + '\r\n'
-              + 'position: ' + json.position + '\r\n'
-              + 'command: ' + json.command + '\r\n'
-              + 'arguments: ' + json.arguments + '\r\n'
-              + '###########\r\n\n'
+                + 'path: ' + json.path + '\r\n'
+                + 'time: ' + json.time + '\r\n'
+                + 'position: ' + json.position + '\r\n'
+                + 'command: ' + json.command + '\r\n'
+                + 'arguments: ' + json.arguments + '\r\n'
+                + '###########\r\n\n'
               );
 
               // this.editLogFile.write('!@#$!@#$!@#$\r\n' + path + '\r\n' + Date.now() + '\r\n'
